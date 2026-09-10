@@ -1,0 +1,29 @@
+# MongoDB API - CURL Test Commands
+# 'handy' att copy/paste in i terminalen
+
+# roten
+curl http://localhost:3000/
+
+# alla kurser
+curl http://localhost:3000/api/courses
+
+#  ny kurs
+curl -X POST http://localhost:3000/api/courses -H "Content-Type: application/json" -d '{"courseCode":"TEST001","courseName":"Test Kurs","points":7.5}'
+
+# specifik kurs (t ex 68c424b0e38f42c92c66efb7)
+curl http://localhost:3000/api/courses/68c424b0e38f42c92c66efb7
+
+# PUT
+curl -X PUT http://localhost:3000/api/courses/COURSE_ID \
+  -H "Content-Type: application/json" -d '{"courseCode":"TEST001","courseName":"Uppdaterad Test Kurs","points":7.5,"educationType":"Normal"}'
+
+# PATCH - vi ändrar antal students
+curl -X PATCH http://localhost:3000/api/courses/68c424b0e38f42c92c66efb7 -H "Content-Type: application/json" -d '{"students":110}'
+
+# DELETE
+curl -X DELETE http://localhost:3000/api/courses/COURSE_ID
+
+# Skapar några test-kurser
+curl -X POST http://localhost:3000/api/courses -H "Content-Type: application/json" -d '{"courseCode":"WEB101","courseName":"Grundläggande Webbutveckling","points":7.5}'
+
+curl -X POST http://localhost:3000/api/courses -H "Content-Type: application/json" -d '{"courseCode":"DB201","coursName":"Databaser","points":15}'

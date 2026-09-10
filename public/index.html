@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+  <meta charset="UTF-8">
+  <title>nosql-example</title>
+</head>
+<body>
+  <h1>Kurser</h1>
+
+  <form id="create-form">
+    <h2>Lägg till kurs</h2>
+    <label>Kurskod: <input type="text" name="courseCode" required></label><br>
+    <label>Kursnamn: <input type="text" name="courseName" required></label><br>
+    <label>Poäng: <input type="number" name="points" step="0.5"></label><br>
+    <button type="submit">Skapa</button>
+  </form>
+
+  <hr>
+
+  <p id="status"></p>
+  <table border="1" cellpadding="4">
+    <thead>
+      <tr>
+        <th>Kurskod</th>
+        <th>Kursnamn</th>
+        <th>Poäng</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody id="courses-body"></tbody>
+  </table>
+
+  <script>
+    const API = '/api/courses';
+
+    async function loadCourses() {
+      const res = await fetch(API);
+      const courses = await res.json();
+
+      document.getElementById('status').textContent = `${courses.length} kurser hämtade från API:t`;
+
+      const tbody = document.getElementById('courses-body');
+      tbody.innerHTML = '';
+      courses.forEach(c => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${c.courseCode ?? ''}</td>
+          <td>${c.courseName ?? ''}</td>
+          <td>${c.points ?? c.credits ?? ''}</td>
+          <td><button data-id="${c._id}">Ta bort</button></td>
+        `;
+        tr.querySelector('button').addEventListener('click', () => deleteCourse(c._id));
+        tbody.appendChild(tr);
+      });
+    }
+
+    async function deleteCourse(id) {
+      await fetch(`${API}/${id}`, { method: 'DELETE' });
+      loadCourses();
+    }
+
+    document.getElementById('create-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const data = Object.fromEntries(new FormData(e.target));
+      if (data.points) data.points = parseFloat(data.points);
+
+      await fetch(API, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+      });
+
+      e.target.reset();
+      loadCourses();
+    });
+
+    loadCourses();
+  </script>
+</body>
+</html>
