@@ -11,3 +11,18 @@ jobs:
 
       - name: Bygg Docker-image
         run: docker build -t deploy-example-backend .
+
+  # TODO vecka 5 — lägg till testjobb när tester finns i repot:
+  #
+  # test:
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - uses: actions/checkout@v4
+  #     - uses: actions/setup-node@v4
+  #       with:
+  #         node-version: 22
+  #     - run: npm ci
+  #     - run: npm test
+  #
+  # Lägg även till `needs: test` i deploy.yml så att deploy
+  # bara sker om testerna går igenom.
