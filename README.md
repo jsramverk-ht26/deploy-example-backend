@@ -1,73 +1,298 @@
-# mongodb exempel med express
+# deploy-example-backend
 
-Exempel med express och mongodb.
+Exempelrepo för driftsättning av en Express + MongoDB-backend med Docker och GitHub Actions.
+Används som referens i kursen DV1677 HT26, vecka 3.
 
-## info
+---
 
-De slides som visade under tillfället (250916) finns i ```slides```-mappen.  
-Under föreläsningen visades kort Compass som exempel på GUI. Det finns [här](https://www.mongodb.com/products/tools/compass).
+## Innehåll
 
-Filen ```courses.json``` innehåller datat som finns i mongodb-instanserna.
+- [Lokal utveckling](#lokal-utveckling)
+- [Driftsättning — steg för steg](#driftsättning--steg-för-steg)
+  - [1. Dockerfile](#1-dockerfile)
+  - [2. docker-compose.yml](#2-docker-composeyml)
+  - [3. GitHub Actions — CI och Deploy](#3-github-actions--ci-och-deploy)
+  - [4. GitHub Secrets](#4-github-secrets)
+  - [5. VPS — Docker och Caddy](#5-vps--docker-och-caddy)
+  - [6. ghcr.io — publik eller privat image](#6-ghcrio--publik-eller-privat-image)
+- [Seed-data](#seed-data)
+- [Databas — åtkomst och hantering](#databas--åtkomst-och-hantering)
+- [Vanliga problem](#vanliga-problem)
 
-I ```curl_commands.txt``` finns ett antal exempel för att använda api:et med curl.  
-Postman är också ett alternativ.
+---
 
-## .env
-
-Exempel på .env
-
-```bash
-# atlas
-MONGODB_URI=mongodb+srv://<username>:<password>@<cluster_name>.mgd2ede.mongodb.net/<collection_name>?retryWrites=true&w=majority&appName=<Cluster_name>
-DATABASE_NAME=courses
-COLLECTION_NAME=courses_data
-
-# docker
-# MONGODB_URI=mongodb://<username>:<password>@localhost:<port>/<database_name>?authSource=admin
-# DATABASE_NAME=courses
-# COLLECTION_NAME=courses
-
-PORT=3000
-```
-
-## routes/endpoints
-
-- `GET /api/courses`
-- `GET /api/courses/:id`
-- `POST /api/courses`
-- `PUT /api/courses/:id`
-- `DELETE /api/courses/:id`
-
-## några curl exempel: 
+## Lokal utveckling
 
 ```bash
-# visa alla courses
-curl http://localhost:3000/api/courses
-
-# skapa course
-curl -X POST http://localhost:3000/api/courses -H "Content-Type: application/json" -d '{"courseCode":"TEST001","courseName":"Test Course","points":5}'
+git clone <repo-url>
+cd deploy-example-backend
+cp .env.example .env   # fyll i MONGODB_URI
+npm install
 ```
 
-## exempel på en docker-compose.yml:
-```yml
+**Alternativ A — lokal MongoDB via Docker:**
+```bash
+docker compose -f docker-compose.yml up -d mongodb
+npm run dev
+```
+
+**Alternativ B — MongoDB Atlas:**
+Sätt `MONGODB_URI` i `.env` till din Atlas-anslutningssträng.
+
+Seed-data (valfritt):
+```bash
+npm run seed
+```
+
+---
+
+## Driftsättning — steg för steg
+
+### 1. Dockerfile
+
+Lägg till `Dockerfile` i roten av ert backend-repo:
+
+```dockerfile
+FROM node:22-alpine
+WORKDIR /app
+COPY package*.json ./
+RUN npm ci --omit=dev
+COPY . .
+EXPOSE 3000
+CMD ["node", "app.js"]
+```
+
+> **OBS:** `package-lock.json` får **inte** finnas i `.gitignore` — `npm ci` kräver den.
+
+Lägg också till `.dockerignore`:
+```
+node_modules
+.env
+.git
+.github
+```
+
+---
+
+### 2. docker-compose.yml
+
+Används på VPS:en för att köra appen och databasen som containers.
+
+```yaml
 services:
-    mongodb:
-        image: mongo:latest
-        container_name: mongodb
-        ports:
-            - '27017:27017' # this is the default port
-        environment:
-            MONGO_INITDB_ROOT_USERNAME: <user_name>
-            MONGO_INITDB_ROOT_PASSWORD: <password>
-        volumes:
-            # path for perstiance
-            - /you/local/path/here/:/data/db
+  app:
+    image: ghcr.io/<ditt-github-namn>/<repo-namn>:latest
+    container_name: <repo-namn>
+    ports:
+      - '3000:3000'
+    environment:
+      - MONGODB_URI=mongodb://mongodb:27017
+      - DATABASE_NAME=jsramverk
+    depends_on:
+      - mongodb
+    restart: always
+
+  mongodb:
+    image: mongo:latest
+    container_name: mongodb
+    volumes:
+      - mongodb_data:/data/db
+    restart: always
 
 volumes:
-    mongodbdata:
+  mongodb_data:
 ```
 
+> **OBS:** MongoDB-porten (27017) ska **inte** mappas mot hosten (`ports: 27017:27017`).
+> Appen når databasen via det interna Docker-nätverket med tjänstnamnet `mongodb`.
+> Om port 27017 redan används av en nativ MongoDB-installation på servern kraschar containern.
+
+---
+
+### 3. GitHub Actions — CI och Deploy
+
+Skapa mappen `.github/workflows/` i ert repo och lägg till två filer:
+
+**`.github/workflows/ci.yml`** — körs vid varje push och PR:
+
+```yaml
+name: CI
+on: [push, pull_request]
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Bygg Docker-image
+        run: docker build -t <repo-namn> .
+```
+
+**`.github/workflows/deploy.yml`** — körs vid push till `main`:
+
+```yaml
+name: Deploy
+on:
+  push:
+    branches: [main]
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Logga in på ghcr.io
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Bygg och pusha image till ghcr.io
+        uses: docker/build-push-action@v5
+        with:
+          push: true
+          tags: ghcr.io/<ditt-github-namn>/<repo-namn>:latest
+
+      - name: Kopiera docker-compose.yml till VPS
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          source: docker-compose.yml
+          target: ~/<repo-namn>/
+
+      - name: Deploya till VPS via SSH
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          script: |
+            cd ~/<repo-namn>
+
+            # Alternativ A: imagen är publik — ingen inloggning behövs
+            # Alternativ B: imagen är privat — kommentera bort raden nedan
+            # echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+
+            docker compose pull
+            docker compose down
+            docker compose up -d
+```
+
+> Byt ut `<ditt-github-namn>` och `<repo-namn>` mot era egna värden.
+
+---
+
+### 4. GitHub Secrets
+
+Gå till: **ert repo → Settings → Secrets and variables → Actions → New repository secret**
+
+| Secret | Värde |
+|--------|-------|
+| `VPS_HOST` | IP-adressen till er VPS |
+| `VPS_USER` | `ubuntu` |
+| `VPS_SSH_KEY` | Hela innehållet i er privata deploy-nyckel |
+
+`GITHUB_TOKEN` skapas automatiskt — ni behöver inte lägga till den.
+
+**Deploy-nyckel — generera ett nyckelpar:**
 ```bash
-$ docker compose up -d
-```  
-# deploy-example-backend
+ssh-keygen -t ed25519 -C "deploy-key" -f deploy_key
+```
+- `deploy_key.pub` → lägg in på VPS i `~/.ssh/authorized_keys`
+- `deploy_key` → lägg in som GitHub Secret `VPS_SSH_KEY`
+- Lägg till `deploy_key` i `.gitignore` — **committa aldrig den privata nyckeln**
+
+---
+
+### 5. VPS — Docker och Caddy
+
+**Installera Docker** (körs en gång på servern):
+```bash
+curl -fsSL https://get.docker.com | sudo sh
+sudo usermod -aG docker ubuntu
+```
+
+**Installera Caddy:**
+```bash
+sudo apt install -y debian-keyring debian-archive-keyring apt-transport-https curl
+curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/gpg.key' | sudo gpg --dearmor -o /usr/share/keyrings/caddy-stable-archive-keyring.gpg
+curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/debian.deb.txt' | sudo tee /etc/apt/sources.list.d/caddy-stable.list
+sudo apt update && sudo apt install caddy
+```
+
+**Konfigurera Caddyfile** (`/etc/caddy/Caddyfile`):
+```
+ert-vps-namn.nplab.bth.se {
+    reverse_proxy localhost:3000
+}
+```
+
+**Starta Caddy** (nginx måste stoppas först — kör på port 80 som standard):
+```bash
+sudo systemctl stop nginx
+sudo systemctl start caddy
+```
+
+Caddy hämtar SSL-certifikat automatiskt via Let's Encrypt.
+
+---
+
+### 6. ghcr.io — publik eller privat image
+
+**Alternativ A — publik image (enklast):**
+GitHub → er profil → Packages → välj paketet → Package settings → Change visibility → Public
+
+VPS:en kan då pulla utan inloggning.
+
+**Alternativ B — privat image:**
+Lägg till docker-login i deploy.yml:s SSH-script:
+```bash
+echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+```
+
+---
+
+## Seed-data
+
+Ladda in exempeldata i databasen (körs efter att containern är igång):
+
+```bash
+# Lokalt
+npm run seed
+
+# På VPS — kör inuti containern
+docker exec <container-namn> node seed.js
+```
+
+---
+
+## Databas — åtkomst och hantering
+
+MongoDB-porten är inte exponerad mot hosten. För att nå databasen:
+
+**Via mongosh direkt i containern:**
+```bash
+docker exec -it mongodb mongosh
+```
+
+**Via MongoDB Compass (SSH-tunnel):**
+```bash
+# Öppna en tunnel i terminalen
+ssh -L 27017:localhost:27017 ubuntu@<vps-ip>
+# Koppla sedan Compass mot: mongodb://localhost:27017
+```
+
+---
+
+## Vanliga problem
+
+| Problem | Orsak | Lösning |
+|---------|-------|---------|
+| `npm ci` felar i Docker-bygget | `package-lock.json` i `.gitignore` | Ta bort raden och committa lock-filen |
+| Port 27017 redan i bruk | Nativ MongoDB körs på servern | Ta inte med `ports: 27017:27017` i docker-compose.yml |
+| `docker compose up` felar vid omdeploy | Gamla containers blockerar | Kör `docker compose down` innan `up` |
+| VPS kan inte pulla imagen | Privat image, ej inloggad | Gör imagen publik eller lägg till docker login i deploy-scriptet |
+| Actions får inte pusha till ghcr.io | Fel workflow-behörigheter | Settings → Actions → General → Workflow permissions → Read and write |
+| Caddy startar inte | Port 80 används av nginx | Kör `sudo systemctl stop nginx` innan `sudo systemctl start caddy` |
