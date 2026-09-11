@@ -86,7 +86,9 @@ services:
     ports:
       - '3000:3000'
     environment:
-      - MONGODB_URI=mongodb://mongodb:27017
+      # Läses från .env-fil på VPS (sätts av deploy.yml via GitHub Secret)
+      # Fallback: mongodb://mongodb:27017 om secret saknas
+      - MONGODB_URI=${MONGODB_URI:-mongodb://mongodb:27017}
       - DATABASE_NAME=jsramverk
     depends_on:
       - mongodb
@@ -193,8 +195,25 @@ Gå till: **ert repo → Settings → Secrets and variables → Actions → New 
 | `VPS_HOST` | IP-adressen till er VPS |
 | `VPS_USER` | `ubuntu` |
 | `VPS_SSH_KEY` | Hela innehållet i er privata deploy-nyckel |
+| `MONGODB_URI` | Anslutningssträng till databasen — se alternativ nedan |
 
 `GITHUB_TOKEN` skapas automatiskt — ni behöver inte lägga till den.
+
+**MONGODB_URI — två alternativ:**
+
+*Alternativ A — MongoDB Atlas (rekommenderas):*
+```
+mongodb+srv://<användare>:<lösenord>@cluster0.xxxxx.mongodb.net/<databasnamn>
+```
+Hämta strängen från Atlas: Database → Connect → Drivers. Byt ut `<password>` mot ditt lösenord.
+
+*Alternativ B — MongoDB som Docker-container på VPS:*
+```
+mongodb://mongodb:27017
+```
+`mongodb` är tjänstnamnet i `docker-compose.yml` — appen når containern via det interna Docker-nätverket.
+
+> `MONGODB_URI` injiceras automatiskt av deploy-workflowet via en `.env`-fil på VPS:en. Ni behöver inte (och ska inte) skriva den i `docker-compose.yml` i klartext.
 
 **Deploy-nyckel — generera ett nyckelpar:**
 ```bash
