@@ -5,7 +5,9 @@ services:
     ports:
       - '3000:3000'
     environment:
-      - MONGODB_URI=mongodb://mongodb:27017
+      # MONGODB_URI sätts via .env-fil på VPS (injiceras av deploy.yml från GitHub Secret)
+      # Fallback: mongodb://mongodb:27017 (Docker-container, används om secret saknas)
+      - MONGODB_URI=${MONGODB_URI:-mongodb://mongodb:27017}
       - DATABASE_NAME=jsramverk
     depends_on:
       - mongodb

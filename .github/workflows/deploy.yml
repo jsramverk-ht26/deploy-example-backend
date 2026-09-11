@@ -42,6 +42,10 @@ jobs:
           script: |
             cd ~/deploy-example-backend
 
+            # Skriv .env-fil med secrets — läses av docker compose vid uppstart
+            # MONGODB_URI: sätt till Atlas-sträng eller mongodb://mongodb:27017 för container
+            echo "MONGODB_URI=${{ secrets.MONGODB_URI }}" > .env
+
             # Alternativ A: imagen är publik på ghcr.io — ingen inloggning behövs
             # Gör imagen publik: GitHub -> Packages -> paketet -> Package settings -> Public
 
