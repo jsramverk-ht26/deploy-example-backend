@@ -270,19 +270,51 @@ docker exec <container-namn> node seed.js
 
 ## Databas — åtkomst och hantering
 
-MongoDB-porten är inte exponerad mot hosten. För att nå databasen:
+MongoDB-porten är inte exponerad mot hosten. För att nå databasen finns två sätt:
 
-**Via mongosh direkt i containern:**
+---
+
+### Alternativ A — mongosh direkt inuti containern på VPS
+
+Logga in på VPS:en och kör mongosh inuti MongoDB-containern:
+
 ```bash
+ssh ubuntu@<vps-ip>
 docker exec -it mongodb mongosh
 ```
 
-**Via MongoDB Compass (SSH-tunnel):**
-```bash
-# Öppna en tunnel i terminalen
-ssh -L 27017:localhost:27017 ubuntu@<vps-ip>
-# Koppla sedan Compass mot: mongodb://localhost:27017
+Inuti mongosh — välj databas och lista collections:
+```js
+use jsramverk
+db.getCollectionNames()
+db.courses.find().limit(5)
 ```
+
+Anslutningssträngen (om du vill ange den explicit):
+```bash
+docker exec -it mongodb mongosh "mongodb://localhost:27017/jsramverk"
+```
+
+---
+
+### Alternativ B — MongoDB Compass via SSH-tunnel
+
+Öppna en SSH-tunnel i en terminal (lämna den öppen):
+```bash
+ssh -L 27017:localhost:27017 ubuntu@<vps-ip>
+```
+
+Öppna sedan Compass och anslut med:
+```
+mongodb://localhost:27017
+```
+
+Eller med databas direkt:
+```
+mongodb://localhost:27017/jsramverk
+```
+
+Tunneln vidarebefordrar din lokala port 27017 till MongoDB-containerns port 27017 inne på servern — Compass ser det som en lokal databas.
 
 ---
 
