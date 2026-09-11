@@ -41,7 +41,13 @@ jobs:
           key: ${{ secrets.VPS_SSH_KEY }}
           script: |
             cd ~/deploy-example-backend
-            echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+
+            # Alternativ A: imagen är publik på ghcr.io — ingen inloggning behövs
+            # Gör imagen publik: GitHub -> Packages -> paketet -> Package settings -> Public
+
+            # Alternativ B: imagen är privat — logga in på VPS med GITHUB_TOKEN
+            # echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+
             docker compose pull
             docker compose down
             docker compose up -d
