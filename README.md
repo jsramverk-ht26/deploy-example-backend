@@ -222,20 +222,40 @@ curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/debian.deb.txt' | sudo 
 sudo apt update && sudo apt install caddy
 ```
 
-**Konfigurera Caddyfile** (`/etc/caddy/Caddyfile`):
+**Konfigurera Caddyfile** — öppna filen och ersätt innehållet:
+```bash
+sudo nano /etc/caddy/Caddyfile
+```
+
+Innehållet ska se ut så här (byt ut mot ert VPS-namn och er port):
 ```
 ert-vps-namn.nplab.bth.se {
     reverse_proxy localhost:3000
 }
 ```
 
-**Starta Caddy** (nginx måste stoppas först — kör på port 80 som standard):
+**Starta Caddy** (nginx måste stoppas först — det kör på port 80 som standard):
 ```bash
 sudo systemctl stop nginx
 sudo systemctl start caddy
 ```
 
-Caddy hämtar SSL-certifikat automatiskt via Let's Encrypt.
+**Ladda om Caddyfile efter ändringar** (utan att starta om):
+```bash
+sudo systemctl reload caddy
+```
+
+**Verifiera att Caddy körs:**
+```bash
+sudo systemctl status caddy
+```
+
+**Se Caddy-loggar** (om något går fel):
+```bash
+sudo journalctl -u caddy -n 50
+```
+
+Caddy hämtar SSL-certifikat automatiskt via Let's Encrypt — HTTPS fungerar direkt utan manuell konfiguration.
 
 ---
 
