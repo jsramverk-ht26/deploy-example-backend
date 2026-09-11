@@ -24,6 +24,15 @@ jobs:
           push: true
           tags: ghcr.io/jsramverk-ht26/deploy-example-backend:latest
 
+      - name: Kopiera docker-compose.yml till VPS
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          source: docker-compose.yml
+          target: ~/deploy-example-backend/
+
       - name: Deploya till VPS via SSH
         uses: appleboy/ssh-action@v1
         with:
@@ -31,5 +40,6 @@ jobs:
           username: ${{ secrets.VPS_USER }}
           key: ${{ secrets.VPS_SSH_KEY }}
           script: |
+            cd ~/deploy-example-backend
             docker compose pull
             docker compose up -d
