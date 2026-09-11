@@ -1,11 +1,22 @@
 services:
+  app:
+    image: ghcr.io/jsramverk-ht26/deploy-example-backend:latest
+    container_name: deploy-example-backend
+    ports:
+      - '3000:3000'
+    environment:
+      - MONGODB_URI=mongodb://mongodb:27017
+      - DATABASE_NAME=jsramverk
+    depends_on:
+      - mongodb
+    restart: always
+
   mongodb:
     image: mongo:latest
     container_name: mongodb
-    ports:
-      - '27017:27017'
     volumes:
       - mongodb_data:/data/db
+    restart: always
 
 volumes:
   mongodb_data:
