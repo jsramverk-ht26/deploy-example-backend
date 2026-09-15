@@ -62,7 +62,10 @@ WORKDIR /app
 # Kopiera bara package-filer först (utnyttjar Docker-cache effektivt)
 COPY package*.json ./
 
-# Installera bara produktionsberoenden (inga devDependencies)
+# Installera beroenden exakt enligt package-lock.json (reproducerbart bygge).
+# --omit=dev utesluter devDependencies (t.ex. nodemon, testbibliotek) — de behövs
+# inte i produktion och gör imagen onödigt stor.
+# OBS: npm ci kräver att package-lock.json finns i repot — ta bort den från .gitignore om den ligger där.
 RUN npm ci --omit=dev
 
 # Kopiera resten av källkoden
