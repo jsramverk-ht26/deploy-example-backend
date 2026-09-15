@@ -53,12 +53,25 @@ npm run seed
 Lägg till `Dockerfile` i roten av ert backend-repo:
 
 ```dockerfile
+# Basimage — Node 22 på Alpine Linux (liten och säker)
 FROM node:22-alpine
+
+# Arbetsmapp inuti containern — alla filer hamnar här
 WORKDIR /app
+
+# Kopiera bara package-filer först (utnyttjar Docker-cache effektivt)
 COPY package*.json ./
+
+# Installera bara produktionsberoenden (inga devDependencies)
 RUN npm ci --omit=dev
+
+# Kopiera resten av källkoden
 COPY . .
+
+# Dokumenterar vilken port appen lyssnar på (kopplas i docker-compose.yml)
 EXPOSE 3000
+
+# Kommandot som körs när containern startar
 CMD ["node", "app.js"]
 ```
 
