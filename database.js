@@ -1,20 +1,25 @@
 import { MongoClient } from 'mongodb';
 
-const connectDB = async () => {
-  try {
-    let dbURI = process.env.MONGODB_URI;
+let client = null;
 
-    // if (process.env.NODE_ENV === "test") {
-    //   dbURI = process.env.MONGODB_TEST_URI;
-    // }
-
-    const client = new MongoClient(dbURI);
+const getClient = async () => {
+  if (!client) {
+    client = new MongoClient(process.env.MONGODB_URI);
     await client.connect();
-    return client.db(process.env.DATABASE_NAME);
-  } catch (error) {
-    console.error('connection failed:', error);
-    process.exit(1);
+  }
+  return client;
+};
+
+const connectDB = async () => {
+  const c = await getClient();
+  return c.db(process.env.DATABASE_NAME);
+};
+
+const closeDB = async () => {
+  if (client) {
+    await client.close();
+    client = null;
   }
 };
 
-export { connectDB};
+export { connectDB, closeDB };
