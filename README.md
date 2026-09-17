@@ -15,6 +15,7 @@ Används som referens i kursen DV1677 HT26, vecka 3.
   - [4. GitHub Secrets](#4-github-secrets)
   - [5. VPS — Docker och Caddy](#5-vps--docker-och-caddy)
   - [6. ghcr.io — publik eller privat image](#6-ghcrio--publik-eller-privat-image)
+- [CORS — släppa in frontenden](#cors--släppa-in-frontenden)
 - [Seed-data](#seed-data)
 - [Databas — åtkomst och hantering](#databas--åtkomst-och-hantering)
 - [Vanliga problem](#vanliga-problem)
@@ -306,6 +307,65 @@ Lägg till docker-login i deploy.yml:s SSH-script:
 ```bash
 echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
 ```
+
+---
+
+## CORS — släppa in frontenden
+
+När frontenden ligger på en annan domän än API:t blockerar webbläsaren svaret
+om inte API:t uttryckligen tillåter det:
+
+```
+Frontend: https://jsramverk-ht26.github.io    (GitHub Pages)
+Backend:  https://dv1677-picard.nplab.bth.se  (VPS)
+          └─ annan origin ─┘
+```
+
+Felet i webbläsarkonsolen:
+
+```
+Access to fetch at 'https://dv1677-picard.nplab.bth.se/api/courses' from origin
+'https://jsramverk-ht26.github.io' has been blocked by CORS policy: No
+'Access-Control-Allow-Origin' header is present on the requested resource.
+```
+
+Installera och aktivera `cors`:
+
+```bash
+npm install cors
+```
+
+```js
+// app.js
+import cors from 'cors';
+
+app.use(cors());   // tillåter alla origins — enklast under kursen
+```
+
+Vill ni snäva in det till bara er egen frontend:
+
+```js
+app.use(cors({ origin: 'https://jsramverk-ht26.github.io' }));
+```
+
+> **Varför märks det inte i curl eller Postman?**
+> CORS kontrolleras av *webbläsaren*, inte av servern. Ett API utan CORS svarar
+> 200 OK på `curl` och ser helt friskt ut i terminalen — felet uppstår först när
+> en webbsida försöker hämta data. Det gör att problemet ofta upptäcks sent,
+> först när frontenden driftsätts.
+
+Testet i `tests/courses.test.js` verifierar att headern finns, så att den inte
+kan försvinna obemärkt:
+
+```js
+const res = await request(app)
+  .get('/api/courses')
+  .set('Origin', 'https://jsramverk-ht26.github.io')
+
+expect(res.headers['access-control-allow-origin']).toBe('*')
+```
+
+Se `deploy-example-frontend` för frontend-sidan av samma sak.
 
 ---
 

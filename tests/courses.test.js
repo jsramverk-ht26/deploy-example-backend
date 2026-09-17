@@ -55,3 +55,14 @@ describe('DELETE /api/courses/:id', () => {
       .expect(200)
   })
 })
+
+describe('CORS', () => {
+  it('skickar Access-Control-Allow-Origin så att webbläsare släpps in', async () => {
+    const res = await request(app)
+      .get('/api/courses')
+      .set('Origin', 'https://jsramverk-ht26.github.io')
+      .expect(200)
+
+    expect(res.headers['access-control-allow-origin']).toBe('*')
+  })
+})
