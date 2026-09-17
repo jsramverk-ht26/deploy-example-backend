@@ -210,7 +210,7 @@ Gå till: **ert repo → Settings → Secrets and variables → Actions → New 
 |--------|-------|
 | `VPS_HOST` | IP-adressen till er VPS |
 | `VPS_USER` | `ubuntu` |
-| `VPS_SSH_KEY` | Hela innehållet i er privata deploy-nyckel |
+| `VPS_SSH_KEY` | Hela innehållet i er privata deploy-nyckel — se nedan |
 | `MONGODB_URI` | Anslutningssträng till databasen — se alternativ nedan |
 
 `GITHUB_TOKEN` skapas automatiskt — ni behöver inte lägga till den.
@@ -235,9 +235,47 @@ mongodb://mongodb:27017
 ```bash
 ssh-keygen -t ed25519 -C "deploy-key" -f deploy_key
 ```
-- `deploy_key.pub` → lägg in på VPS i `~/.ssh/authorized_keys`
-- `deploy_key` → lägg in som GitHub Secret `VPS_SSH_KEY`
-- Lägg till `deploy_key` i `.gitignore` — **committa aldrig den privata nyckeln**
+Tryck Enter på frågan om lösenfras — lämna den tom. En nyckel med lösenord kan inte
+användas av Actions utan extra konfiguration.
+
+Kommandot ger två filer, och de ska till varsitt ställe:
+
+- `deploy_key.pub` (publik) → läggs till på VPS i `~/.ssh/authorized_keys`
+- `deploy_key` (privat) → läggs in som GitHub Secret `VPS_SSH_KEY`
+
+*Publika nyckeln* är en enda rad (`ssh-ed25519 AAAA... deploy-key`) och hela raden
+ska med. Använd `>>` och inte `>` när ni lägger till den — annars skriver ni över
+era egna inloggningsnycklar och låser ut er:
+```bash
+ssh-copy-id -i deploy_key.pub ubuntu@<er-vps-ip>
+```
+
+*Privata nyckeln* — **hela filens innehåll ska kopieras in i secreten**. Det vill
+säga raden `-----BEGIN OPENSSH PRIVATE KEY-----`, alla rader däremellan, raden
+`-----END OPENSSH PRIVATE KEY-----` och radbrytningen sist. Inga citattecken runt,
+ingen rad borttagen, inga radbrytningar hopslagna:
+
+```
+-----BEGIN OPENSSH PRIVATE KEY-----
+b3BlbnNzaC1rZXktdjEAAAAABG5vbmUAAAAEbm9uZQAAAAAAAAABAAAAMwAAAAtzc2gt
+...
+-----END OPENSSH PRIVATE KEY-----
+```
+
+Kopiera via urklipp i stället för att markera i terminalen — musmarkering är den
+vanligaste orsaken till att radbrytningar går sönder:
+```bash
+pbcopy < deploy_key                        # macOS
+wl-copy < deploy_key                       # Linux (Wayland)
+xclip -selection clipboard < deploy_key    # Linux (X11)
+```
+
+- Lägg till `deploy_key` i `.gitignore` — **committa aldrig den privata nyckeln**.
+  Den publika (`deploy_key.pub`) är ofarlig och behöver inte ignoreras.
+
+> Misslyckas deploy-steget med `ssh: no key found` eller `handshake failed` är det
+> nästan alltid secreten: en saknad BEGIN- eller END-rad, en tappad radbrytning,
+> eller att den publika nyckeln råkat hamna i secreten i stället för den privata.
 
 ---
 
