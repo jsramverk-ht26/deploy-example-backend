@@ -23,6 +23,14 @@ afterAll(async () => {
   await mongod.stop()
 })
 
+describe('GET /api/status', () => {
+  it('svarar med 200 och en array med kurser', async () => {
+    const res = await request(app).get('/api/status').expect(200)
+    expect(res.body.status).toBe("ok")
+    expect(res.body.count).toBeGreaterThan(0)
+  })
+})
+
 describe('GET /api/courses', () => {
   it('svarar med 200 och en array med kurser', async () => {
     const res = await request(app).get('/api/courses').expect(200)

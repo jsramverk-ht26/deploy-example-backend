@@ -4,8 +4,26 @@ import { connectDB } from './database.js';
 
 const router = express.Router();
 
+
+
+
 // collection name
 const COLL_NAME = "courses";
+
+// GET
+router.get('/status', async (req, res) => {
+  try {
+    const db = await connectDB();
+    const count = await db.collection(COLL_NAME).countDocuments();
+
+
+    res.json({ state: 'ok', count: count });
+  }
+  catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 
 // GET
 router.get('/courses', async (req, res) => {
