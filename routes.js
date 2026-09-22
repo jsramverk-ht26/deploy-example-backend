@@ -17,7 +17,7 @@ router.get('/status', async (req, res) => {
     const count = await db.collection(COLL_NAME).countDocuments();
 
 
-    res.json({ state: 'ok', count: count });
+    res.json({ status: 'ok', count: count });
   }
   catch (error) {
     res.status(500).json({ error: error.message });
