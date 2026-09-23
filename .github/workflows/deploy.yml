@@ -2,7 +2,13 @@ name: Deploy
 
 on:
   push:
-    branches: [main]
+    # Under projektet (vecka 6-10) arbetar ni i en dev-branch. Utan dev här
+    # skulle den driftsatta appen stå kvar på vecka 5-koden hela projektet,
+    # eftersom inget mergas till main förrän vid inlämningen.
+    #
+    #   dev  = det som körs och demonstreras under projektet
+    #   main = den släppta versionen
+    branches: [main, dev]
 
 jobs:
   test:
