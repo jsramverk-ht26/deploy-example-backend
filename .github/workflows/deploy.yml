@@ -68,8 +68,8 @@ jobs:
             # övriga lägger till (>>).
             # MONGODB_URI: sätt till Atlas-sträng eller mongodb://mongodb:27017 för container
             echo "MONGODB_URI=${{ secrets.MONGODB_URI }}" > .env
-            # Exempel på en andra variabel (avkommentera och skapa secreten i repot):
-            # echo "JWT_SECRET=${{ secrets.JWT_SECRET }}" >> .env
+            # Exempel på en andra variabel (skapa secreten JWT_SECRET i repot, annars blir den tom):
+            echo "JWT_SECRET=${{ secrets.JWT_SECRET }}" >> .env
 
             # Alternativ A: imagen är publik på ghcr.io — ingen inloggning behövs
             # Gör imagen publik: GitHub -> Packages -> paketet -> Package settings -> Public
